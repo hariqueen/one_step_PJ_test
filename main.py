@@ -1,7 +1,7 @@
-__import__('sqlite3')
+# pysqlite3 대신 sqlite3 사용
+import sqlite3
 import sys
-sys.modules['pysqlite3'] = sys.modules['sqlite3']
-
+sys.modules['pysqlite3'] = sys.modules.pop('sqlite3')
 
 import streamlit as st
 import random
@@ -101,7 +101,7 @@ if uploaded_file is not None:
     role_prompt = "경계성 지능 장애가 있는 사람을 위해서 유치원생에게 설명하듯 쉽게 소통해 주되, 답변은 최대한 간략하게 부탁해요. 신뢰할 수 있는 친구 역할로 대화해 주세요."
 
     # 사용자가 질문을 입력 (기본값으로 빈 문자열을 사용)
-    question = st.text_input('질문을 입력하세요', value='')  # 여기에 question 변수를 먼저 정의합니다.
+    question = st.text_input('질문을 입력하세요', value='')
 
     # 세션 상태에 저장된 이전 메시지들 표시
     if not question:
