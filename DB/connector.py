@@ -30,7 +30,9 @@ class DBconnector:
     def mysql_connect(self):
         try:
             conn = mysql.connector.connect(**self.conn_params)
+            print("MySQL 연결 성공")
             return conn
         except Error as e:
             print(f"DB 연결 중 오류 발생: {e}")
             return None
+
