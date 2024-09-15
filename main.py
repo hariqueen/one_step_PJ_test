@@ -53,7 +53,6 @@ for idx, question in enumerate(st.session_state.sidebar_history):
 
 ####################### 파일 업로드 및 GPT 설정 #######################
 
-st.title("txt파일을 업로드 해보세요.")
 uploaded_file = st.file_uploader("텍스트 파일을 올려주세요!", type=['txt'])
 
 def txt_to_document(uploaded_file):
@@ -76,6 +75,9 @@ if uploaded_file is not None:
 
     st.header("어떤 질문이든 물어보세요!")
 
+    # 역할 프롬프트 설정 (추가된 부분)
+    role_prompt = "경계성 지능 장애가 있는 사람을 위해서 유치원 수준에데 설명하듯 매우 쉬운 난이도로 소통해 주되, 답변은 최대한 간략하게 부탁해요. 신뢰할 수 있는 친구 역할로 대화해 주세요."
+
     # 사용자가 질문을 입력
     question = st.text_input('질문을 입력하세요')
 
@@ -88,7 +90,8 @@ if uploaded_file is not None:
 
         # GPT 퀴즈 생성 로직
         def generate_quiz():
-            prompt = """
+            prompt = f"""
+            {role_prompt}
             당신은 경계성 지능 장애가 있는 사람들을 위한 퀴즈를 출제하는 AI입니다. 이 퀴즈는 위험한 상황에서 어떻게 대처해야 하는지를 묻는 퀴즈입니다. 상황을 주고, 3개의 선택지를 제공하고, 정답과 해설도 제공합니다.
             
             예시:
@@ -121,6 +124,7 @@ if uploaded_file is not None:
             # GPT에게 정답을 평가하도록 요청
             def evaluate_answer(user_answer, quiz_question):
                 prompt = f"""
+                {role_prompt}
                 다음 퀴즈에 대한 사용자의 답변을 평가해 주세요.
 
                 퀴즈:
@@ -147,6 +151,7 @@ if uploaded_file is not None:
 
         # GPT를 사용하여 txt 파일을 기반으로 응답 생성
         with st.spinner('답변을 생성 중입니다...'):
+            prompt = f"{role_prompt}\n\n질문: {question}\n\n답변:"
             llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
             retriever = db.as_retriever()
             qa_chain = RetrievalQA.from_chain_type(llm, retriever=retriever)
@@ -163,6 +168,7 @@ if uploaded_file is not None:
     elif question:
         # 일반적인 질문에 대한 처리
         with st.spinner('답변을 생성 중입니다...'):
+            prompt = f"{role_prompt}\n\n질문: {question}\n\n답변:"
             llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
             retriever = db.as_retriever()
             qa_chain = RetrievalQA.from_chain_type(llm, retriever=retriever)
