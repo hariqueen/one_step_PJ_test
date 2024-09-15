@@ -3,7 +3,7 @@ langchain-openai==0.0.2.post1
 openai>=1.6.1,<2.0.0
 mysql-connector-python==8.3.0
 pypdf
-chromadb
+chromadb==0.3.21
 tiktoken
 pysqlite3-binary
 langchain_community==0.0.38
