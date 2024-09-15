@@ -12,7 +12,8 @@ class DBconnector:
                 host = st.secrets["DB_HOST"],
                 database = st.secrets["DB_NAME"],
                 user = st.secrets["DB_USER"],
-                password = st.secrets["DB_PASSWORD"]
+                password = st.secrets["DB_PASSWORD"],
+                port=st.secrets.get("DB_PORT", 3306)
             )
             # MySQL 연결 시도
             self.conn = self.mysql_connect()
