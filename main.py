@@ -1,7 +1,6 @@
-# pysqlite3 대신 sqlite3 사용
-import sqlite3
+__import__('pysqlite3')
 import sys
-sys.modules['pysqlite3'] = sys.modules.pop('sqlite3')
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
 import streamlit as st
 import random
