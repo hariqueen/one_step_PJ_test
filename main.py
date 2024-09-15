@@ -79,7 +79,13 @@ if uploaded_file is not None:
     role_prompt = "경계성 지능 장애가 있는 사람을 위해서 유치원 수준에데 설명하듯 매우 쉬운 난이도로 소통해 주되, 답변은 최대한 간략하게 부탁해요. 신뢰할 수 있는 친구 역할로 대화해 주세요."
 
     # 사용자가 질문을 입력 (기본값으로 빈 문자열을 사용)
-    question = st.text_input('질문을 입력하세요', value='') 
+    question = st.text_input('질문을 입력하세요', value='')  # 여기에 question 변수를 먼저 정의합니다.
+
+    # 세션 상태에 저장된 이전 메시지들 표시
+    if not question:  # 이제 question 변수가 정의된 상태에서 조건을 사용할 수 있습니다.
+        for message in st.session_state.chat_history:
+            with st.chat_message(message["role"], avatar="🐻" if message["role"] == "chatbot" else None):
+                st.write(message["content"])
 
     # 사용자가 범죄 관련 질문을 했는지 감지 (예를 들어, '사기', '위협' 등의 단어를 포함)
     crime_keywords = ['사기', '위협', '도둑', '범죄', '해킹', '보이스피싱', '사칭']
@@ -181,9 +187,3 @@ if uploaded_file is not None:
             insert_data(question, result["result"])
 
             st.write(result["result"])
-
-# 세션 상태에 저장된 이전 메시지들 표시
-if not question:  # question이 빈 문자열이면 이전 기록을 표시
-    for message in st.session_state.chat_history:
-        with st.chat_message(message["role"], avatar="🐻" if message["role"] == "chatbot" else None):
-            st.write(message["content"])
