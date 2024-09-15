@@ -1,6 +1,5 @@
 import datetime as dt
-from db.connector import DBconnector
-from settings import DB_SETTINGS
+from DB.connector import DBconnector
 from mysql.connector import Error
 
 # DB 연결 후 데이터 저장
@@ -13,7 +12,7 @@ def insert_data(user_input, response):
     
     try:
         # DB 연결
-        with DBconnector(**DB_SETTINGS['MYSQL']) as sql:
+        with DBconnector() as sql:  # DBconnector는 이제 st.secrets를 사용
             cursor = sql.conn.cursor()
             
             # 데이터 저장
