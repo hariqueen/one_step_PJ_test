@@ -15,21 +15,22 @@ def insert_data(user_input, response):
         with DBconnector() as sql:  # DBconnector는 이제 st.secrets를 사용
             cursor = sql.conn.cursor()
             
-            # 데이터 저장
+            # 데이터 저장 쿼리 작성
             query = '''INSERT INTO test(question, answer, date, time) VALUES (%s, %s, %s, %s);'''
             input_data = (user_input, response, date, time)
+            
+            # 쿼리 실행
             cursor.execute(query, input_data)
             
-            # 작업 정상 처리
+            # 커밋하여 작업 확정
             sql.conn.commit()
 
-    # 에러 출력
+    # 데이터베이스 관련 오류 발생 시
     except Error as e:
-        print('DB 에러 발생', e)
-        if sql:
-            sql.conn.rollback()
-
-    # 커서 종료 (커넥션은 with 문에 의해 자동으로 종료됨)
+        print(f"DB 에러 발생: {e}")
+        if sql and sql.conn:
+            sql.conn.rollback()  # 에러 발생 시 롤백 처리
+    # 예외와 상관없이 항상 실행되는 코드
     finally:
         if cursor:
-            cursor.close()
+            cursor.close()  # 커서 종료하여 리소스 해제
