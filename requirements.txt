@@ -1,8 +1,10 @@
-langchain==0.1.20  # 버전을 명시적으로 지정
+langchain==0.1.20 
 langchain-openai==0.0.2.post1
 openai>=1.6.1,<2.0.0
+mysql-connector-python==8.3.0
 pypdf
 chromadb
 tiktoken
 pysqlite3-binary
-langchain_community==0.0.38  # 버전을 명시적으로 지정
+langchain_community==0.0.38 
+mysql-connector-python==8.3.0
