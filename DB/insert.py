@@ -1,7 +1,7 @@
 import datetime as dt
-import streamlit as st
 from DB.connector import DBconnector
 from mysql.connector import Error
+import streamlit as st
 
 # DB 연결 후 데이터 저장
 def insert_data(user_input, response):
@@ -12,24 +12,18 @@ def insert_data(user_input, response):
     
     try:
         # DB 연결
-        with DBconnector() as sql:
-            if sql.conn:
-                st.write("DB 커넥션 활성화됨. 데이터 삽입 중...")
-                cursor = sql.conn.cursor()
-                
-                # 데이터 저장 쿼리 작성
-                query = '''INSERT INTO test(question, answer, date, time) VALUES (%s, %s, %s, %s);'''
-                input_data = (user_input, response, date, time)
-                
-                # 쿼리 실행
-                cursor.execute(query, input_data)
-                
-                # 수동 커밋
-                sql.conn.commit()
-                st.write("데이터 커밋 완료!")
-
-            else:
-                st.write("DB 커넥션이 활성화되지 않았습니다.")
+        with DBconnector() as sql:  # DBconnector는 이제 st.secrets를 사용
+            cursor = sql.conn.cursor()
+            
+            # 데이터 저장 쿼리 작성
+            query = '''INSERT INTO test(question, answer, date, time) VALUES (%s, %s, %s, %s);'''
+            input_data = (user_input, response, date, time)
+            
+            # 쿼리 실행
+            cursor.execute(query, input_data)
+            
+            # 커밋하여 작업 확정
+            sql.conn.commit()
 
     # 데이터베이스 관련 오류 발생 시
     except Error as e:
