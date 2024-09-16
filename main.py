@@ -5,15 +5,12 @@ sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 import streamlit as st
 import tempfile
 import os
-import numpy as np
 from langchain_community.document_loaders import TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain.schema import SystemMessage, HumanMessage, AIMessage
 from DB.insert import insert_data  # MySQL에 저장하기 위한 함수
 from DB.connector import DBconnector  # MySQL DB 연결
-import openai
-import random
 
 ####################### 메인 화면 세팅 #######################
 
@@ -96,7 +93,8 @@ if uploaded_file is not None:
 user_input = st.chat_input("질문을 입력하세요.")
 
 if user_input:
-    if len(st.session_state.chat_history) == 0 or st.session_state.chat_history[-1]["role"] == "assistant":
+    # 이전에 챗봇의 응답이 끝나지 않았으면 응답을 추가하지 않음
+    if not (st.session_state.chat_history and st.session_state.chat_history[-1]["role"] == "assistant"):
         new_message = HumanMessage(content=user_input)
         st.session_state.chat_history.append(new_message)
 
@@ -155,7 +153,8 @@ if user_input:
             # MySQL에 질문과 응답을 저장
             insert_data(user_input, new_response.content)
 
-# 이전 대화 출력
-for message in st.session_state.chat_history:
-    role = "🐻" if isinstance(message, AIMessage) else "😃"
-    st.chat_message(role, avatar="🐻" if role == "🐻" else None).write(message.content)
+# 이전 대화 출력 (중복 제거)
+for idx, message in enumerate(st.session_state.chat_history):
+    if idx == 0 or message["role"] != st.session_state.chat_history[idx-1]["role"]:  # 이전 메시지와 역할이 다르면 출력
+        role = "🐻" if isinstance(message, AIMessage) else "😃"
+        st.chat_message(role, avatar="🐻" if role == "🐻" else None).write(message.content)
