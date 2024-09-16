@@ -10,7 +10,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from langchain_community.document_loaders import TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
-from langchain.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
 from DB.insert import insert_data  # MySQL에 저장하기 위한 함수
 from DB.connector import DBconnector  # MySQL DB 연결
 import openai
@@ -88,7 +88,7 @@ if uploaded_file is not None:
 
     # 너무 긴 텍스트를 줄이기 위해 처음 1000글자까지만 사용
     document_summary = " ".join([text.page_content for text in texts])[:1000]
-    role_prompt = f"경계성 지능 장애가 있는 사람을 위해 이 문서의 내용을 바탕으로 신뢰할 수 있는 친구처럼 답변을 제공해 주세요."
+    role_prompt = f"경계성 지능 장애가 있는 사람을 위해 이 문서의 내용을 바탕으로 신뢰할 수 있는 친구처럼 답변을 제공해주는데, 최대한 간략하게 해주세요."
 
     st.header("어떤 질문이든 물어보세요!")
 
@@ -116,7 +116,7 @@ if uploaded_file is not None:
             새로운 퀴즈를 하나 만들어 주세요.
             """
             llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
-            result = llm({"messages": [{"role": "system", "content": prompt}]})
+            result = llm.invoke({"messages": [{"role": "system", "content": prompt}]})
             return result["choices"][0]["message"]["content"]
 
         quiz = generate_quiz()
@@ -135,7 +135,7 @@ if uploaded_file is not None:
             사용자의 답변: {user_answer}
             """
             llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
-            result = llm({"messages": [{"role": "system", "content": prompt}]})
+            result = llm.invoke({"messages": [{"role": "system", "content": prompt}]})
             return result["choices"][0]["message"]["content"]
 
         # 사용자의 답변을 받음
@@ -161,7 +161,7 @@ if uploaded_file is not None:
         # GPT 모델을 통해 답변 생성
         messages = [{"role": "system", "content": role_prompt}] + st.session_state.chat_history
         llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
-        result = llm({"messages": messages})
+        result = llm.invoke({"messages": messages})
 
         # 챗봇 답변 저장
         new_response = {"role": "assistant", "content": result["choices"][0]["message"]["content"]}
