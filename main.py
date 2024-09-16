@@ -11,6 +11,7 @@ from langchain_community.document_loaders import TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from langchain_openai import ChatOpenAI
+from langchain.schema import SystemMessage, HumanMessage  # 메시지 형식을 위해 추가
 from DB.insert import insert_data  # MySQL에 저장하기 위한 함수
 from DB.connector import DBconnector  # MySQL DB 연결
 import openai
@@ -116,7 +117,7 @@ if uploaded_file is not None:
             새로운 퀴즈를 하나 만들어 주세요.
             """
             llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
-            result = llm.invoke({"messages": [{"role": "system", "content": prompt}]})
+            result = llm.invoke([SystemMessage(content=prompt)])
             return result["choices"][0]["message"]["content"]
 
         quiz = generate_quiz()
@@ -135,7 +136,7 @@ if uploaded_file is not None:
             사용자의 답변: {user_answer}
             """
             llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
-            result = llm.invoke({"messages": [{"role": "system", "content": prompt}]})
+            result = llm.invoke([SystemMessage(content=prompt)])
             return result["choices"][0]["message"]["content"]
 
         # 사용자의 답변을 받음
@@ -155,13 +156,13 @@ if uploaded_file is not None:
 
     elif question and not st.session_state.quiz_active:
         # 질문을 세션에 저장
-        new_message = {"role": "user", "content": question}
+        new_message = HumanMessage(content=question)
         st.session_state.chat_history.append(new_message)
 
         # GPT 모델을 통해 답변 생성
-        messages = [{"role": "system", "content": role_prompt}] + st.session_state.chat_history
+        messages = [SystemMessage(content=role_prompt)] + st.session_state.chat_history
         llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
-        result = llm.invoke({"messages": messages})
+        result = llm.invoke(messages)
 
         # 챗봇 답변 저장
         new_response = {"role": "assistant", "content": result["choices"][0]["message"]["content"]}
@@ -175,5 +176,5 @@ if uploaded_file is not None:
 
 # 이전 대화 출력
 for message in st.session_state.chat_history:
-    role = "🐻" if message["role"] == "assistant" else "😃"
+    role = "🐻" if isinstance(message, SystemMessage) or message["role"] == "assistant" else "😃"
     st.write(f"{role}: {message['content']}")
