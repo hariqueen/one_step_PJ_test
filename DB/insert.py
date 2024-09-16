@@ -12,25 +12,28 @@ def insert_data(user_input, response):
     
     try:
         # DB 연결
-        with DBconnector() as sql:  # DBconnector는 이제 st.secrets를 사용
-            cursor = sql.conn.cursor()
-            
-            # 데이터 저장 쿼리 작성
-            query = '''INSERT INTO test(question, answer, date, time) VALUES (%s, %s, %s, %s);'''
-            input_data = (user_input, response, date, time)
-            
-            # 쿼리 실행
-            cursor.execute(query, input_data)
-            
-            # 커밋하여 작업 확정
-            sql.conn.commit()
+        with DBconnector() as sql:
+            if sql.conn:
+                st.write("DB 커넥션 활성화됨. 데이터 삽입 중...")
+                cursor = sql.conn.cursor()
+                
+                # 데이터 저장 쿼리 작성
+                query = '''INSERT INTO test(question, answer, date, time) VALUES (%s, %s, %s, %s);'''
+                input_data = (user_input, response, date, time)
+                
+                # 쿼리 실행
+                cursor.execute(query, input_data)
+                
+                # 수동 커밋
+                sql.conn.commit()
+                st.write("데이터 커밋 완료!")
 
-            # 로그 출력
-            st.write(f"데이터가 성공적으로 저장되었습니다: {user_input}, {response}")
+            else:
+                st.write("DB 커넥션이 활성화되지 않았습니다.")
 
     # 데이터베이스 관련 오류 발생 시
     except Error as e:
-        print(f"DB 에러 발생: {e}")
+        st.write(f"DB 에러 발생: {e}")
         if sql and sql.conn:
             sql.conn.rollback()  # 에러 발생 시 롤백 처리
     finally:
