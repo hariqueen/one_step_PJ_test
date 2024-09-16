@@ -34,3 +34,4 @@ def insert_data(user_input, response):
         if cursor:
             cursor.close()  # 커서 종료하여 리소스 해제
 
+#test
