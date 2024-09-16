@@ -1,4 +1,5 @@
 import datetime as dt
+import streamlit as st
 from DB.connector import DBconnector
 from mysql.connector import Error
 
@@ -25,7 +26,7 @@ def insert_data(user_input, response):
             sql.conn.commit()
 
             # 로그 출력
-            print(f"데이터가 성공적으로 저장되었습니다: {user_input}, {response}")
+            st.write(f"데이터가 성공적으로 저장되었습니다: {user_input}, {response}")
 
     # 데이터베이스 관련 오류 발생 시
     except Error as e:
