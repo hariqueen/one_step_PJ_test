@@ -28,6 +28,9 @@ if "quiz_active" not in st.session_state:
     st.session_state.quiz_active = False
 if "current_quiz" not in st.session_state:
     st.session_state.current_quiz = None
+if "role_prompt" not in st.session_state:
+    # 기본 역할 프롬프트를 설정 (파일 업로드 전에 기본값 설정)
+    st.session_state.role_prompt = "경계성 지능 장애가 있는 사람을 위해 신뢰할 수 있는 친구처럼 간략하게 답변을 제공해 주세요."
 
 st.title("바라봇")
 st.title('안녕하세요! 무엇을 도와드릴까요?')
@@ -86,9 +89,9 @@ if uploaded_file is not None:
     # 텍스트 벡터화
     text_vectors = [embeddings_model.embed_query(text.page_content) for text in texts]
 
-    # 너무 긴 텍스트를 줄이기 위해 처음 1000글자까지만 사용
+    # 문서 요약 및 role_prompt 설정
     document_summary = " ".join([text.page_content for text in texts])[:1000]
-    role_prompt = f"경계성 지능 장애가 있는 사람을 위해 이 문서의 내용을 바탕으로 신뢰할 수 있는 친구처럼 답변을 간략하게 제공해 주세요."
+    st.session_state.role_prompt = f"경계성 지능 장애가 있는 사람을 위해 이 문서의 내용을 바탕으로 신뢰할 수 있는 친구처럼 답변을 간략하게 제공해 주세요."
 
 ####################### 사용자 입력 #######################
 
@@ -102,7 +105,7 @@ if user_input:
     if "퀴즈" in user_input and not st.session_state.quiz_active:
         def generate_quiz():
             quiz_prompt = f"""
-            {role_prompt}
+            {st.session_state.role_prompt}
             당신은 경계성 지능 장애가 있는 사람들을 위한 퀴즈를 출제하는 AI입니다. 상황을 주고, 3개의 선택지만 제공하세요. 정답과 해설은 나중에 제공하세요.
             
             예시:
@@ -124,7 +127,7 @@ if user_input:
     elif st.session_state.quiz_active:
         def evaluate_answer(user_answer, quiz_question):
             prompt = f"""
-            {role_prompt}
+            {st.session_state.role_prompt}
             다음 퀴즈에 대한 사용자의 답변을 평가하고 정답과 해설을 제공하세요.
             퀴즈:
             {quiz_question}
@@ -141,7 +144,7 @@ if user_input:
 
     else:
         # 일반적인 질문 처리
-        messages = [SystemMessage(content=role_prompt)] + st.session_state.chat_history
+        messages = [SystemMessage(content=st.session_state.role_prompt)] + st.session_state.chat_history
         llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
         result = llm(messages)
 
