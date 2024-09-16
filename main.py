@@ -1,7 +1,3 @@
-__import__('pysqlite3')
-import sys
-sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
-
 import streamlit as st
 import tempfile
 import os
@@ -9,14 +5,11 @@ from langchain_community.document_loaders import TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain.schema import SystemMessage, HumanMessage, AIMessage
-from DB.insert import insert_data  # MySQL에 저장하기 위한 함수
-from DB.connector import DBconnector  # MySQL DB 연결
+from DB.insert import insert_data
+from DB.connector import DBconnector
 
-####################### 메인 화면 세팅 #######################
+####################### 세션 상태 초기화 #######################
 
-st.set_page_config(page_title="한걸음AI 프로토타입")
-
-# 세션 상태 초기화
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 if "quiz_active" not in st.session_state:
@@ -24,11 +17,11 @@ if "quiz_active" not in st.session_state:
 if "current_quiz" not in st.session_state:
     st.session_state.current_quiz = None
 if "role_prompt" not in st.session_state:
-    # 파일이 없을 때 기본 role_prompt 설정
-    st.session_state.role_prompt = "경계성 지능 장애가 있는 사람을 위해 도움을 주는 친구가 되어주세요. 친근하게 말하되, 간략하게 답변을 제공해 주세요."
+    st.session_state.role_prompt = "This chatbot is designed to help slow learners who are vulnerable to various crimes. Please provide simple and short responses at a kindergarten level so that the user can easily understand. Also, communicate in a friendly and empathetic tone, like a close friend. Focus on crime prevention and provide helpful answers. All responses must be in Korean."
 
-st.title("바라봇")
-st.title('안녕하세요! 무엇을 도와드릴까요?')
+####################### 메인 화면 #######################
+
+st.title("바라봇 - 친구처럼 도와주는 AI")
 
 ####################### 사이드바 #######################
 
@@ -40,7 +33,7 @@ def get_chat_history():
     try:
         with DBconnector() as sql:
             cursor = sql.conn.cursor(dictionary=True)
-            cursor.execute("SELECT * FROM test ORDER BY id DESC LIMIT 10")  # 최근 10개의 대화 이력을 가져옴
+            cursor.execute("SELECT * FROM test ORDER BY id DESC LIMIT 10")
             chat_history = cursor.fetchall()
             return chat_history
     except Exception as e:
@@ -59,9 +52,9 @@ for idx, chat in enumerate(chat_history):
     if st.sidebar.button(f"{idx + 1}. {chat['question']}"):
         st.session_state.chat_history = [{"role": "user", "content": chat['question']}, {"role": "assistant", "content": chat['answer']}]
 
-####################### 파일 업로드 처리 #######################
+####################### 파일 업로드 기능 #######################
 
-uploaded_file = st.file_uploader("텍스트 파일을 올려주세요!", type=['txt'])
+uploaded_file = st.file_uploader("범죄 사례 파일을 올려주세요.", type=['txt'])
 
 def txt_to_document(uploaded_file):
     temp_dir = tempfile.TemporaryDirectory()
@@ -72,89 +65,66 @@ def txt_to_document(uploaded_file):
     pages = loader.load_and_split()
     return pages
 
-if uploaded_file is not None:
+if uploaded_file:
     pages = txt_to_document(uploaded_file)
-
-    # 텍스트 분할
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=300, chunk_overlap=20)
     texts = text_splitter.split_documents(pages)
-
     embeddings_model = OpenAIEmbeddings()
-
-    # 텍스트 벡터화
     text_vectors = [embeddings_model.embed_query(text.page_content) for text in texts]
+    st.session_state.role_prompt = f"Please carefully assess whether the uploaded file's content resembles a crime-related situation. Provide simple and short responses at a kindergarten level so that the user can easily understand. Also, communicate in a friendly and empathetic tone, like a close friend. Focus on crime prevention and provide helpful answers. All responses must be in Korean."
 
-    # 문서 요약 및 role_prompt 설정
-    document_summary = " ".join([text.page_content for text in texts])[:1000]
-    st.session_state.role_prompt = f"경계성 지능 장애가 있는 사람을 위해 도움을 주는 친구가 되어주세요. 친근하게 말하되, 간략하게 답변을 제공해 주세요."
-
-####################### 사용자 입력 #######################
+####################### 사용자 입력 처리 #######################
 
 user_input = st.chat_input("질문을 입력하세요.")
 
 if user_input:
-    # 이전에 챗봇의 응답이 끝나지 않았으면 응답을 추가하지 않음
-    if not (st.session_state.chat_history and st.session_state.chat_history[-1]["role"] == "assistant"):
-        new_message = HumanMessage(content=user_input)
-        st.session_state.chat_history.append(new_message)
+    new_message = HumanMessage(content=user_input)
+    st.session_state.chat_history.append(new_message)
 
-        # 퀴즈 활성화 확인
-        if "퀴즈" in user_input and not st.session_state.quiz_active:
-            def generate_quiz():
-                quiz_prompt = f"""
-                {st.session_state.role_prompt}
-                당신은 경계성 지능 장애가 있는 사람들을 위한 퀴즈를 출제하는 AI입니다. 상황을 주고, 3개의 선택지만 제공하세요. 정답과 해설은 나중에 제공하세요.
-                
-                예시:
-                상황: "가까운 친구가 ‘급하게 돈이 필요하다’며 메신저로 돈을 보내달라고 요청했습니다. 이럴 때 어떻게 해야 할까요?"
-                1. 바로 돈을 송금한다.
-                2. 친구에게 직접 전화해 사실을 확인한다.
-                3. 메신저로 추가 질문을 해 상황을 파악한다.
-                새로운 퀴즈를 하나 만들어 주세요.
-                """
-                llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
-                result = llm.invoke([SystemMessage(content=quiz_prompt)])
-                return result.content
+    ####################### 퀴즈 기능 처리 #######################
 
-            quiz = generate_quiz()
-            st.session_state.quiz_active = True
-            st.session_state.current_quiz = quiz
-            st.chat_message("assistant", avatar="🤖").write(quiz)
-
-        elif st.session_state.quiz_active:
-            def evaluate_answer(user_answer, quiz_question):
-                prompt = f"""
-                {st.session_state.role_prompt}
-                다음 퀴즈에 대한 사용자의 답변을 평가하고 정답과 해설을 제공하세요.
-                퀴즈:
-                {quiz_question}
-                사용자의 답변: {user_answer}
-                """
-                llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
-                result = llm.invoke([SystemMessage(content=prompt)])
-                return result.content
-
-            # 사용자의 퀴즈 답변 처리
-            evaluation = evaluate_answer(user_input, st.session_state.current_quiz)
-            st.session_state.quiz_active = False
-            st.chat_message("assistant", avatar="🤖").write(evaluation)
-
-        else:
-            # 일반적인 질문 처리
-            messages = [SystemMessage(content=st.session_state.role_prompt)] + st.session_state.chat_history
+    if "퀴즈" in user_input and not st.session_state.quiz_active:
+        def generate_quiz():
+            quiz_prompt = """
+            친구에게 도움이 되는 퀴즈를 낼게. 질문을 보고 적절한 선택을 해줘.
+            상황: "길을 걷다가 누군가가 다가와 무언가를 사달라고 요청했어요. 어떻게 할까요?"
+            1. 바로 사준다.
+            2. 이유를 묻고 도와줄 방법을 생각한다.
+            3. 그냥 무시하고 지나간다.
+            """
             llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
-            result = llm.invoke(messages)
+            result = llm.invoke([SystemMessage(content=quiz_prompt)])
+            return result.content
+        
+        quiz = generate_quiz()
+        st.session_state.quiz_active = True
+        st.session_state.current_quiz = quiz
+        st.chat_message("assistant", avatar="🤖").write(quiz)
 
-            # 챗봇 답변 저장 및 출력
-            new_response = AIMessage(content=result.content)
-            st.session_state.chat_history.append(new_response)
-            st.chat_message("assistant", avatar="🤖").write(new_response.content)
+    ####################### 퀴즈 응답 처리 #######################
 
-            # MySQL에 질문과 응답을 저장
-            insert_data(user_input, new_response.content)
+    elif st.session_state.quiz_active:
+        def evaluate_answer(user_answer, quiz_question):
+            prompt = f"""
+            사용자의 답변을 평가하고, 정답과 설명을 제공해줘. 
+            퀴즈: {quiz_question} 
+            사용자의 답변: {user_answer}
+            """
+            llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
+            result = llm.invoke([SystemMessage(content=prompt)])
+            return result.content
+        
+        evaluation = evaluate_answer(user_input, st.session_state.current_quiz)
+        st.session_state.quiz_active = False
+        st.chat_message("assistant", avatar="🤖").write(evaluation)
 
-# 이전 대화 출력 (중복 제거)
-for idx, message in enumerate(st.session_state.chat_history):
-    if idx == 0 or message["role"] != st.session_state.chat_history[idx-1]["role"]:  # 이전 메시지와 역할이 다르면 출력
-        role = "🐻" if isinstance(message, AIMessage) else "😃"
-        st.chat_message(role, avatar="🐻" if role == "🐻" else None).write(message.content)
+    ####################### 일반 질문 처리 #######################
+
+    else:
+        messages = [SystemMessage(content=st.session_state.role_prompt)] + st.session_state.chat_history
+        llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
+        result = llm.invoke(messages)
+        new_response = AIMessage(content=result.content)
+        st.session_state.chat_history.append(new_response)
+        st.chat_message("assistant", avatar="🤖").write(new_response.content)
+        insert_data(user_input, new_response.content)
