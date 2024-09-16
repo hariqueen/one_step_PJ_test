@@ -28,7 +28,7 @@ if "current_quiz" not in st.session_state:
     st.session_state.current_quiz = None
 if "role_prompt" not in st.session_state:
     # 파일이 없을 때 기본 role_prompt 설정
-    st.session_state.role_prompt = "경계성 지능 장애가 있는 사람을 위해 도움을 주는 친구가 되어주세요. 친근하게 말하 되, 간략하게 답변을 제공해 주세요."
+    st.session_state.role_prompt = "경계성 지능 장애가 있는 사람을 위해 도움을 주는 친구가 되어주세요. 친근하게 말하되, 간략하게 답변을 제공해 주세요."
 
 st.title("바라봇")
 st.title('안녕하세요! 무엇을 도와드릴까요?')
@@ -38,7 +38,7 @@ st.title('안녕하세요! 무엇을 도와드릴까요?')
 st.sidebar.title("질문 이력 :book:")
 st.sidebar.write("---")
 
-# MySQL에서 대화 이력 가져오기
+# DB에서 대화 이력 가져오기
 def get_chat_history():
     try:
         with DBconnector() as sql:
@@ -46,7 +46,7 @@ def get_chat_history():
             cursor.execute("SELECT * FROM test ORDER BY id DESC LIMIT 10")  # 최근 10개의 대화 이력을 가져옴
             chat_history = cursor.fetchall()
             return chat_history
-    except mysql.connector.Error as e:
+    except Exception as e:
         print(f"Error fetching chat history: {e}")
         return []
 
@@ -62,7 +62,7 @@ for idx, chat in enumerate(chat_history):
     if st.sidebar.button(f"{idx + 1}. {chat['question']}"):
         st.session_state.chat_history = [{"role": "user", "content": chat['question']}, {"role": "assistant", "content": chat['answer']}]
 
-####################### GPT 설정 #######################
+####################### 파일 업로드 처리 #######################
 
 uploaded_file = st.file_uploader("텍스트 파일을 올려주세요!", type=['txt'])
 
@@ -89,15 +89,13 @@ if uploaded_file is not None:
 
     # 문서 요약 및 role_prompt 설정
     document_summary = " ".join([text.page_content for text in texts])[:1000]
-    # 파일 업로드 후 role_prompt를 다시 설정
-    st.session_state.role_prompt = f"경계성 지능 장애가 있는 사람을 위해 도움을 주는 친구가 되어주세요. 친근하게 말하 되, 간략하게 답변을 제공해 주세요."
+    st.session_state.role_prompt = f"경계성 지능 장애가 있는 사람을 위해 도움을 주는 친구가 되어주세요. 친근하게 말하되, 간략하게 답변을 제공해 주세요."
 
 ####################### 사용자 입력 #######################
 
 user_input = st.chat_input("질문을 입력하세요.")
 
 if user_input:
-    # 새로운 질문이 들어올 때만 메시지를 처리
     if len(st.session_state.chat_history) == 0 or st.session_state.chat_history[-1]["role"] == "assistant":
         new_message = HumanMessage(content=user_input)
         st.session_state.chat_history.append(new_message)
@@ -117,7 +115,7 @@ if user_input:
                 새로운 퀴즈를 하나 만들어 주세요.
                 """
                 llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
-                result = llm([SystemMessage(content=quiz_prompt)])
+                result = llm.invoke([SystemMessage(content=quiz_prompt)])
                 return result.content
 
             quiz = generate_quiz()
@@ -135,7 +133,7 @@ if user_input:
                 사용자의 답변: {user_answer}
                 """
                 llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
-                result = llm([SystemMessage(content=prompt)])
+                result = llm.invoke([SystemMessage(content=prompt)])
                 return result.content
 
             # 사용자의 퀴즈 답변 처리
@@ -147,7 +145,7 @@ if user_input:
             # 일반적인 질문 처리
             messages = [SystemMessage(content=st.session_state.role_prompt)] + st.session_state.chat_history
             llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
-            result = llm(messages)
+            result = llm.invoke(messages)
 
             # 챗봇 답변 저장 및 출력
             new_response = AIMessage(content=result.content)
