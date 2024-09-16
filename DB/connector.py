@@ -13,12 +13,6 @@ class DBconnector:
                 'password': st.secrets["DB_PASSWORD"]
             }
             self.conn = self.mysql_connect()
-
-            if self.conn:
-                st.write("DB 연결 성공!")
-            else:
-                st.write("DB 연결 실패!")
-
         except Error as e:
             st.write(f"DB 연결 실패: {e}")
             self.conn = None
@@ -35,5 +29,7 @@ class DBconnector:
             conn = mysql.connector.connect(**self.conn_params)
             return conn
         except Error as e:
-            st.write(f"DB 연결 중 오류 발생: {e}")
+            print(f"DB 연결 중 오류 발생: {e}")
             return None
+
+#test
