@@ -17,7 +17,12 @@ if "quiz_active" not in st.session_state:
 if "current_quiz" not in st.session_state:
     st.session_state.current_quiz = None
 if "role_prompt" not in st.session_state:
-    st.session_state.role_prompt = "This chatbot is designed to help slow learners who are vulnerable to various crimes. Please provide simple and short responses at a kindergarten level so that the user can easily understand. Also, communicate in a friendly and empathetic tone, like a close friend. Focus on crime prevention and provide helpful answers. All responses must be in Korean."
+    st.session_state.role_prompt = """
+    이 챗봇은 각종 범죄에 노출되기 쉬운 느린학습자를 돕기 위한 목적으로 설계되었습니다.
+    사용자가 이해하기 쉽게, 유치원 수준의 간단하고 짧은 답변을 제공해주세요.
+    또한 친근한 친구처럼 상냥하고 공감하는 말투로 대화하세요.
+    범죄 예방에 초점을 맞추어 도움이 되는 답변을 제공해주세요. 답변은 반드시 한국말로하세요.
+    """
 
 ####################### 메인 화면 #######################
 
@@ -71,15 +76,20 @@ if uploaded_file:
     texts = text_splitter.split_documents(pages)
     embeddings_model = OpenAIEmbeddings()
     text_vectors = [embeddings_model.embed_query(text.page_content) for text in texts]
-    st.session_state.role_prompt = f"Please carefully assess whether the uploaded file's content resembles a crime-related situation. Provide simple and short responses at a kindergarten level so that the user can easily understand. Also, communicate in a friendly and empathetic tone, like a close friend. Focus on crime prevention and provide helpful answers. All responses must be in Korean."
+    st.session_state.role_prompt = f"상황에 맞게 최선을 다해 도와줄게요!"
 
 ####################### 사용자 입력 처리 #######################
 
 user_input = st.chat_input("질문을 입력하세요.")
 
 if user_input:
-    new_message = HumanMessage(content=user_input)
+    new_message = {"role": "user", "content": user_input}
     st.session_state.chat_history.append(new_message)
+
+    # 대화 이력 표시 (사용자 질문 포함)
+    for message in st.session_state.chat_history:
+        with st.chat_message(message["role"], avatar="🐻" if message["role"] == "assistant" else None):
+            st.write(message["content"])
 
     ####################### 퀴즈 기능 처리 #######################
 
@@ -124,7 +134,14 @@ if user_input:
         messages = [SystemMessage(content=st.session_state.role_prompt)] + st.session_state.chat_history
         llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
         result = llm.invoke(messages)
-        new_response = AIMessage(content=result.content)
+        new_response = {"role": "assistant", "content": result.content}
         st.session_state.chat_history.append(new_response)
-        st.chat_message("assistant", avatar="🤖").write(new_response.content)
-        insert_data(user_input, new_response.content)
+        st.chat_message("assistant", avatar="🤖").write(new_response["content"])
+        insert_data(user_input, new_response["content"])
+
+####################### 이전 대화 내역 표시 #######################
+
+if not user_input:
+    for message in st.session_state.chat_history:
+        with st.chat_message(message["role"], avatar="🐻" if message["role"] == "assistant" else None):
+            st.write(message["content"])
