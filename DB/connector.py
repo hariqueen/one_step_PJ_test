@@ -13,9 +13,11 @@ class DBconnector:
                 'password': st.secrets["DB_PASSWORD"]
             }
             self.conn = self.mysql_connect()
+            self.conn.autocommit = True  # 자동 커밋 설정
         except Error as e:
             print(f"DB 연결 실패: {e}")
             self.conn = None
+
 
     def __enter__(self):
         return self
