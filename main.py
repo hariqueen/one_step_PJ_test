@@ -96,7 +96,41 @@ if uploaded_file is not None:
     # 사용자가 질문을 입력
     question = st.text_input('질문을 입력하세요', value='')
 
-    if question:
+    if "퀴즈" in question:
+        # 퀴즈 생성 로직
+        def generate_quiz():
+            prompt = f"""
+            {role_prompt}
+            당신은 경계성 지능 장애가 있는 사람들을 위한 퀴즈를 출제하는 AI입니다. 이 퀴즈는 위험한 상황에서 어떻게 대처해야 하는지를 묻는 퀴즈입니다. 상황을 주고, 3개의 선택지를 제공하고, 정답과 해설도 제공합니다.
+            """
+            llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
+            result = llm({"query": prompt})
+            return result["result"]
+
+        quiz = generate_quiz()
+        st.write(quiz)
+
+        # 사용자의 퀴즈 답변을 받음
+        user_answer = st.text_input('당신의 답은 무엇인가요?')
+
+        # GPT에게 정답을 평가하도록 요청
+        def evaluate_answer(user_answer, quiz_question):
+            prompt = f"""
+            {role_prompt}
+            다음 퀴즈에 대한 사용자의 답변을 평가해 주세요.
+            퀴즈:
+            {quiz_question}
+            사용자의 답변: {user_answer}
+            """
+            llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
+            result = llm({"query": prompt})
+            return result["result"]
+
+        if st.button('정답 확인'):
+            evaluation = evaluate_answer(user_answer, quiz)
+            st.write(evaluation)
+
+    elif question:
         # 질문도 벡터화
         question_vector = embeddings_model.embed_query(question)
 
