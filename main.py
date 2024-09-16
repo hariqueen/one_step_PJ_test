@@ -99,7 +99,9 @@ if uploaded_file:
     texts = text_splitter.split_documents(pages)
     embeddings_model = OpenAIEmbeddings()
     text_vectors = [embeddings_model.embed_query(text.page_content) for text in texts]
-    st.session_state.role_prompt = f"상황에 맞게 최선을 다해 도와줄게요!"
+    st.session_state.role_prompt = f"""
+    Please carefully assess whether the uploaded file's content resembles a crime-related situation. Provide simple and short responses at a kindergarten level so that the user can easily understand. Also, communicate in a friendly and empathetic tone, like a close friend. Focus on crime prevention and provide helpful answers. All responses must be in Korean.
+    """
 
 ####################### 사용자 입력 처리 #######################
 
