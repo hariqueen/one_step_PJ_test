@@ -58,7 +58,7 @@ if st.sidebar.button("새로운 질문 하기➕"):
 chat_history = get_chat_history()
 for idx, chat in enumerate(chat_history):
     if st.sidebar.button(f"{idx + 1}. {chat['question']}"):
-        st.session_state.chat_history = [{"role": "user", "content": chat['question']}, {"role": "chatbot", "content": chat['answer']}]
+        st.session_state.chat_history = [{"role": "user", "content": chat['question']}, {"role": "assistant", "content": chat['answer']}]
         st.session_state.restored_session = True
 
 ####################### 파일 업로드 및 GPT 설정 #######################
@@ -85,10 +85,10 @@ if uploaded_file is not None:
 
     # 텍스트 벡터화
     text_vectors = [embeddings_model.embed_query(text.page_content) for text in texts]
-    
-    # 텍스트 파일의 내용을 요약하여 역할 프롬프트에 반영
-    document_summary = " ".join([text.page_content for text in texts])
-    role_prompt = f"경계성 지능 장애가 있는 사람을 위해 이 문서를 바탕으로 신뢰할 수 있는 친구처럼 답변을 제공해주세요: {document_summary}"
+
+    # 너무 긴 텍스트를 줄이기 위해 처음 1000글자까지만 사용
+    document_summary = " ".join([text.page_content for text in texts])[:1000]
+    role_prompt = f"경계성 지능 장애가 있는 사람을 위해 이 문서의 내용을 바탕으로 신뢰할 수 있는 친구처럼 답변을 제공해 주세요."
 
     st.header("어떤 질문이든 물어보세요!")
 
@@ -137,10 +137,10 @@ if uploaded_file is not None:
         # GPT 모델을 통해 답변 생성
         messages = [{"role": "system", "content": role_prompt}] + st.session_state.chat_history
         llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
-        result = llm(messages)
+        result = llm({"messages": messages})
 
         # 챗봇 답변 저장
-        new_response = {"role": "chatbot", "content": result["choices"][0]["message"]["content"]}
+        new_response = {"role": "assistant", "content": result["choices"][0]["message"]["content"]}
         st.session_state.chat_history.append(new_response)
 
         # 챗봇 답변 출력
@@ -151,5 +151,5 @@ if uploaded_file is not None:
 
 # 이전 대화 출력
 for message in st.session_state.chat_history:
-    role = "🐻" if message["role"] == "chatbot" else "😃"
+    role = "🐻" if message["role"] == "assistant" else "😃"
     st.write(f"{role}: {message['content']}")
