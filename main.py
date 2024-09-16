@@ -83,7 +83,8 @@ if uploaded_file is not None:
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=300, chunk_overlap=20)
     texts = text_splitter.split_documents(pages)
 
-    embeddings_model = OpenAIEmbeddings()
+    # OpenAI 임베딩 사용 (text-embedding-3-small 모델 사용)
+    embeddings_model = OpenAIEmbeddings(model="text-embedding-3-small")
 
     # 텍스트 벡터화
     text_vectors = [embeddings_model.embed_query(text.page_content) for text in texts]
