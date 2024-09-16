@@ -95,28 +95,41 @@ if uploaded_file is not None:
     # 사용자가 질문을 입력
     question = st.text_input('질문을 입력하세요', value='')
 
-    if "퀴즈" in question:
+    # 퀴즈 관련 상태 관리
+    if "quiz_active" not in st.session_state:
+        st.session_state.quiz_active = False
+        st.session_state.current_quiz = None
+        st.session_state.quiz_answered = False
+
+    if "퀴즈" in question and not st.session_state.quiz_active:
         # 퀴즈 생성 로직
         def generate_quiz():
             prompt = f"""
             {role_prompt}
-            당신은 경계성 지능 장애가 있는 사람들을 위한 퀴즈를 출제하는 AI입니다. 이 퀴즈는 위험한 상황에서 어떻게 대처해야 하는지를 묻는 퀴즈입니다. 상황을 주고, 3개의 선택지를 제공하고, 정답과 해설도 제공합니다.
+            당신은 경계성 지능 장애가 있는 사람들을 위한 퀴즈를 출제하는 AI입니다. 이 퀴즈는 위험한 상황에서 어떻게 대처해야 하는지를 묻는 퀴즈입니다. 상황을 주고, 3개의 선택지만 제공하세요. 정답과 해설은 제공하지 마세요.
+            
+            예시:
+            상황: "가까운 친구가 ‘급하게 돈이 필요하다’며 메신저로 돈을 보내달라고 요청했습니다. 이럴 때 어떻게 해야 할까요?"
+            1. 바로 돈을 송금한다.
+            2. 친구에게 직접 전화해 사실을 확인한다.
+            3. 메신저로 추가 질문을 해 상황을 파악한다.
+            새로운 퀴즈를 하나 만들어 주세요.
             """
             llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
             result = llm({"messages": [{"role": "system", "content": prompt}]})
             return result["choices"][0]["message"]["content"]
 
         quiz = generate_quiz()
+        st.session_state.quiz_active = True
+        st.session_state.current_quiz = quiz
         st.write(quiz)
 
-        # 사용자의 퀴즈 답변을 받음
-        user_answer = st.text_input('당신의 답은 무엇인가요?')
-
-        # GPT에게 정답을 평가하도록 요청
+    elif st.session_state.quiz_active and not st.session_state.quiz_answered:
+        # 사용자가 답변을 입력
         def evaluate_answer(user_answer, quiz_question):
             prompt = f"""
             {role_prompt}
-            다음 퀴즈에 대한 사용자의 답변을 평가해 주세요.
+            다음 퀴즈에 대한 사용자의 답변을 평가하고 정답과 해설을 제공하세요.
             퀴즈:
             {quiz_question}
             사용자의 답변: {user_answer}
@@ -125,11 +138,22 @@ if uploaded_file is not None:
             result = llm({"messages": [{"role": "system", "content": prompt}]})
             return result["choices"][0]["message"]["content"]
 
-        if st.button('정답 확인'):
-            evaluation = evaluate_answer(user_answer, quiz)
-            st.write(evaluation)
+        # 사용자의 답변을 받음
+        user_answer = question
 
-    elif question:
+        # 정답 평가 및 피드백 제공
+        evaluation = evaluate_answer(user_answer, st.session_state.current_quiz)
+        st.write(evaluation)
+
+        # 퀴즈가 답변되었다고 표시
+        st.session_state.quiz_answered = True
+
+        # 퀴즈 종료
+        st.session_state.quiz_active = False
+        st.session_state.current_quiz = None
+        st.session_state.quiz_answered = False
+
+    elif question and not st.session_state.quiz_active:
         # 질문을 세션에 저장
         new_message = {"role": "user", "content": question}
         st.session_state.chat_history.append(new_message)
