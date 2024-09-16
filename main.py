@@ -140,6 +140,15 @@ if user_input:
         st.session_state.chat_history.append(new_response)
         st.chat_message("assistant", avatar="🤖").write(new_response["content"])
 
+    else:
+        # 일반적인 질문 처리
+        messages = [SystemMessage(content=st.session_state.role_prompt)] + st.session_state.chat_history
+        llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
+        result = llm.invoke(messages)
+        new_response = {"role": "assistant", "content": result.content}
+        st.session_state.chat_history.append(new_response)
+        st.chat_message("assistant", avatar="🤖").write(new_response["content"])
+
     # DB에 데이터 추가
     insert_data(user_input, new_response["content"])
 
