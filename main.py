@@ -7,16 +7,15 @@ import random
 import re
 import tempfile
 import os
+import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
 from langchain_community.document_loaders import TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
-from langchain_community.vectorstores import Chroma
-from langchain.chains import RetrievalQA
 from langchain.chat_models import ChatOpenAI
 from DB.insert import insert_data  # MySQL에 저장하기 위한 함수
 from DB.connector import DBconnector  # MySQL DB 연결
 import openai
-import mysql.connector
 
 ####################### 메인 화면 세팅 #######################
 
@@ -54,13 +53,6 @@ def get_chat_history():
 
 # "새로운 질문하기" 버튼
 if st.sidebar.button("새로운 질문 하기➕"):
-
-    if st.session_state.chat_history and not st.session_state.get('restored_session', False):
-        first_user_question = next((msg for msg in st.session_state.chat_history if msg["role"] == "user"), None)
-        if first_user_question:
-            st.session_state.sidebar_history.append(first_user_question)
-        st.session_state.full_history.append(st.session_state.chat_history.copy())
-    
     st.session_state.chat_history = []
     st.session_state.restored_session = False
 
@@ -68,7 +60,6 @@ if st.sidebar.button("새로운 질문 하기➕"):
 chat_history = get_chat_history()
 for idx, chat in enumerate(chat_history):
     if st.sidebar.button(f"{idx + 1}. {chat['question']}"):
-        # 해당 대화의 질문과 응답을 채팅 창에 다시 불러오기
         st.session_state.chat_history = [{"role": "user", "content": chat['question']}, {"role": "chatbot", "content": chat['answer']}]
         st.session_state.restored_session = True
 
@@ -88,65 +79,47 @@ def txt_to_document(uploaded_file):
 if uploaded_file is not None:
     pages = txt_to_document(uploaded_file)
 
+    # 텍스트 분할
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=300, chunk_overlap=20)
     texts = text_splitter.split_documents(pages)
 
     embeddings_model = OpenAIEmbeddings()
-    db = Chroma.from_documents(texts, embeddings_model)  # ChromaDB 사용
 
+    # 텍스트 벡터화
+    text_vectors = [embeddings_model.embed_query(text.page_content) for text in texts]
+    
     st.header("어떤 질문이든 물어보세요!")
 
     # 역할 프롬프트 설정 
     role_prompt = "경계성 지능 장애가 있는 사람을 위해서 유치원생에게 설명하듯 쉽게 소통해 주되, 답변은 최대한 간략하게 부탁해요. 신뢰할 수 있는 친구 역할로 대화해 주세요."
 
-    # 사용자가 질문을 입력 (기본값으로 빈 문자열을 사용)
+    # 사용자가 질문을 입력
     question = st.text_input('질문을 입력하세요', value='')
 
-    # 세션 상태에 저장된 이전 메시지들 표시
-    if not question:
-        for message in st.session_state.chat_history:
-            with st.chat_message(message["role"], avatar="🐻" if message["role"] == "chatbot" else None):
-                st.write(message["content"])
+    if question:
+        # 질문도 벡터화
+        question_vector = embeddings_model.embed_query(question)
 
-    # 범죄 관련 질문을 감지
-    crime_keywords = ['사기', '위협', '도둑', '범죄', '해킹', '보이스피싱', '사칭']
+        # 코사인 유사도를 사용해 질문과 가장 유사한 텍스트 찾기
+        similarities = cosine_similarity([question_vector], text_vectors)
+        most_similar_index = np.argmax(similarities)
 
-    if any(keyword in question for keyword in crime_keywords):
-        st.write("이런 상황은 매우 중요한 문제입니다. 제가 도움을 드릴게요...")
+        # 가장 유사한 텍스트
+        best_match = texts[most_similar_index].page_content
 
-        # GPT를 사용하여 txt 파일을 기반으로 응답 생성
-        with st.spinner('답변을 생성 중입니다...'):
-            prompt = f"{role_prompt}\n\n질문: {question}\n\n답변:"
-            llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
-            retriever = db.as_retriever()  # Chroma를 retriever로 설정
-            qa_chain = RetrievalQA.from_chain_type(llm, retriever=retriever)
-            result = qa_chain({"query": question})
+        st.write(f"가장 유사한 답변: {best_match}")
 
-            new_message = {"role": "user", "content": question}
-            st.session_state.chat_history.append(new_message)
-            new_response = {"role": "chatbot", "content": result["result"]}
-            st.session_state.chat_history.append(new_response)
+        # GPT 모델을 통해 답변 생성
+        llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
+        prompt = f"{role_prompt}\n\n질문: {question}\n\n답변:"
+        result = llm({"query": prompt})
 
-            # MySQL에 질문과 응답을 저장
-            insert_data(question, result["result"])
+        new_message = {"role": "user", "content": question}
+        st.session_state.chat_history.append(new_message)
+        new_response = {"role": "chatbot", "content": result["result"]}
+        st.session_state.chat_history.append(new_response)
 
-            st.write(result["result"])
+        # MySQL에 질문과 응답을 저장
+        insert_data(question, result["result"])
 
-    elif question:
-        # 일반적인 질문에 대한 처리
-        with st.spinner('답변을 생성 중입니다...'):
-            prompt = f"{role_prompt}\n\n질문: {question}\n\n답변:"
-            llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
-            retriever = db.as_retriever()
-            qa_chain = RetrievalQA.from_chain_type(llm, retriever=retriever)
-            result = qa_chain({"query": question})
-
-            new_message = {"role": "user", "content": question}
-            st.session_state.chat_history.append(new_message)
-            new_response = {"role": "chatbot", "content": result["result"]}
-            st.session_state.chat_history.append(new_response)
-
-            # MySQL에 질문과 응답을 저장
-            insert_data(question, result["result"])
-
-            st.write(result["result"])
+        st.write(result["result"])
