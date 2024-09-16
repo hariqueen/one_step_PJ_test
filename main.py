@@ -18,10 +18,11 @@ if "current_quiz" not in st.session_state:
     st.session_state.current_quiz = None
 if "role_prompt" not in st.session_state:
     st.session_state.role_prompt = """
-    이 챗봇은 각종 범죄에 노출되기 쉬운 느린학습자를 돕기 위한 목적으로 설계되었습니다.
-    사용자가 이해하기 쉽게, 유치원 수준의 간단하고 짧은 답변을 제공해주세요.
-    또한 친근한 친구처럼 상냥하고 공감하는 말투로 대화하세요.
-    범죄 예방에 초점을 맞추어 도움이 되는 답변을 제공해주세요. 답변은 반드시 한국말로하세요.
+    This chatbot is designed to help slow learners who are vulnerable to various crimes. 
+    Please provide simple and short responses at a kindergarten level so that the user can easily understand. 
+    Also, communicate in a friendly and empathetic tone, like a close friend. 
+    Focus on crime prevention and provide helpful answers. 
+    All responses must be in Korean.
     """
 
 if "sidebar_history" not in st.session_state:
@@ -100,7 +101,10 @@ if uploaded_file:
     embeddings_model = OpenAIEmbeddings()
     text_vectors = [embeddings_model.embed_query(text.page_content) for text in texts]
     st.session_state.role_prompt = f"""
-    Please carefully assess whether the uploaded file's content resembles a crime-related situation. Provide simple and short responses at a kindergarten level so that the user can easily understand. Also, communicate in a friendly and empathetic tone, like a close friend. Focus on crime prevention and provide helpful answers. All responses must be in Korean.
+    Please carefully assess whether the uploaded file's content resembles a crime-related situation. 
+    Provide simple and short responses at a kindergarten level so that the user can easily understand. 
+    Also, communicate in a friendly and empathetic tone, like a close friend. Focus on crime prevention and provide helpful answers. 
+    All responses must be in Korean.
     """
 
 ####################### 사용자 입력 처리 #######################
@@ -130,7 +134,7 @@ if user_input:
         2. 이유를 묻고 도와줄 방법을 생각한다.
         3. 그냥 무시하고 지나간다.
 
-        이제 새로운 상황과 3개의 선택지를 제시해줘. 그리고 사용자가 답변을 제출하면 평가와 해설을 제공해줘.
+        이제 새로운 상황과 3개의 선택지를 제시해줘. 그리고 사용자가 답변을 제출하면 정답을 알려주고 해설을 제공해줘.
         """
         llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
         result = llm.invoke([SystemMessage(content=prompt)])
