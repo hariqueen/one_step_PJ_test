@@ -13,11 +13,10 @@ class DBconnector:
                 'password': st.secrets["DB_PASSWORD"]
             }
             self.conn = self.mysql_connect()
-            self.conn.autocommit = True  # 자동 커밋 설정
+            # self.conn.autocommit = True  # 자동 커밋 설정 제거
         except Error as e:
-            print(f"DB 연결 실패: {e}")
+            st.write(f"DB 연결 실패: {e}")
             self.conn = None
-
 
     def __enter__(self):
         return self
@@ -31,5 +30,5 @@ class DBconnector:
             conn = mysql.connector.connect(**self.conn_params)
             return conn
         except Error as e:
-            print(f"DB 연결 중 오류 발생: {e}")
+            st.write(f"DB 연결 중 오류 발생: {e}")
             return None
