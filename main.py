@@ -24,6 +24,13 @@ if "role_prompt" not in st.session_state:
     범죄 예방에 초점을 맞추어 도움이 되는 답변을 제공해주세요. 답변은 반드시 한국말로하세요.
     """
 
+if "sidebar_history" not in st.session_state:
+    st.session_state.sidebar_history = []
+if "full_history" not in st.session_state:
+    st.session_state.full_history = []
+if "restored_session" not in st.session_state:
+    st.session_state.restored_session = False
+
 ####################### 메인 화면 #######################
 
 st.title("바라봇 - 친구처럼 도와주는 AI")
@@ -47,15 +54,31 @@ def get_chat_history():
 
 # "새로운 질문하기" 버튼
 if st.sidebar.button("새로운 질문 하기➕"):
+    # 현재 대화 이력이 존재하고, 세션이 복원된 상태가 아닌 경우
+    if st.session_state.chat_history and not st.session_state.get('restored_session', False):
+        # 사이드바 이력에 사용자의 첫 번째 질문 추가
+        first_user_question = next((msg for msg in st.session_state.chat_history if msg["role"] == "user"), None)
+
+        if first_user_question:
+            st.session_state.sidebar_history.append(first_user_question)
+
+        # 현재 대화 이력을 full_history에 저장
+        st.session_state.full_history.append(st.session_state.chat_history.copy())
+
+    # 새로운 세션 시작
     st.session_state.chat_history = []
-    st.session_state.quiz_active = False
-    st.session_state.current_quiz = None
+
+    # 세션이 복원된 상태를 False로 설정
+    st.session_state.restored_session = False
 
 # 사이드바에서 이전 대화 이력 버튼을 표시
-chat_history = get_chat_history()
-for idx, chat in enumerate(chat_history):
-    if st.sidebar.button(f"{idx + 1}. {chat['question']}"):
-        st.session_state.chat_history = [{"role": "user", "content": chat['question']}, {"role": "assistant", "content": chat['answer']}]
+for idx, question in enumerate(st.session_state.sidebar_history):
+    if st.sidebar.button(f"{idx + 1}. {question['content']}"):
+        # 선택된 세션의 대화 이력 로드
+        st.session_state.chat_history = st.session_state.full_history[idx]
+
+        # 세션이 복원된 상태를 True로 설정
+        st.session_state.restored_session = True
 
 ####################### 파일 업로드 기능 #######################
 
@@ -91,8 +114,9 @@ if user_input:
         with st.chat_message(message["role"], avatar="🐻" if message["role"] == "assistant" else None):
             st.write(message["content"])
 
-    ####################### 퀴즈 기능 처리 #######################
+    ####################### 퀴즈 및 일반 질문 처리 #######################
 
+    # 퀴즈 처리 로직
     if "퀴즈" in user_input and not st.session_state.quiz_active:
         def generate_quiz():
             quiz_prompt = """
@@ -105,31 +129,31 @@ if user_input:
             llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
             result = llm.invoke([SystemMessage(content=quiz_prompt)])
             return result.content
-        
+
         quiz = generate_quiz()
         st.session_state.quiz_active = True
         st.session_state.current_quiz = quiz
         st.chat_message("assistant", avatar="🤖").write(quiz)
 
-    ####################### 퀴즈 응답 처리 #######################
-
+    # 퀴즈 응답 처리
     elif st.session_state.quiz_active:
         def evaluate_answer(user_answer, quiz_question):
             prompt = f"""
-            사용자의 답변을 평가하고, 정답과 설명을 제공해줘. 
-            퀴즈: {quiz_question} 
+            사용자의 답변을 평가하고, 정답과 설명을 제공해줘.
+            퀴즈: {quiz_question}
             사용자의 답변: {user_answer}
             """
             llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
             result = llm.invoke([SystemMessage(content=prompt)])
             return result.content
-        
+
         evaluation = evaluate_answer(user_input, st.session_state.current_quiz)
         st.session_state.quiz_active = False
-        st.chat_message("assistant", avatar="🤖").write(evaluation)
+        new_response = {"role": "assistant", "content": evaluation}
+        st.session_state.chat_history.append(new_response)
+        st.chat_message("assistant", avatar="🤖").write(new_response["content"])
 
-    ####################### 일반 질문 처리 #######################
-
+    # 일반적인 질문 처리
     else:
         messages = [SystemMessage(content=st.session_state.role_prompt)] + st.session_state.chat_history
         llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
@@ -137,7 +161,9 @@ if user_input:
         new_response = {"role": "assistant", "content": result.content}
         st.session_state.chat_history.append(new_response)
         st.chat_message("assistant", avatar="🤖").write(new_response["content"])
-        insert_data(user_input, new_response["content"])
+
+    # DB에 데이터 추가
+    insert_data(user_input, new_response["content"])
 
 ####################### 이전 대화 내역 표시 #######################
 
