@@ -114,50 +114,26 @@ if user_input:
         with st.chat_message(message["role"], avatar="🐻" if message["role"] == "assistant" else None):
             st.write(message["content"])
 
-    ####################### 퀴즈 및 일반 질문 처리 #######################
+    ####################### 퀴즈 및 답변 평가 통합 처리 #######################
 
-    # 퀴즈 처리 로직
-    if "퀴즈" in user_input and not st.session_state.quiz_active:
-        def generate_quiz():
-            quiz_prompt = """
-            친구에게 도움이 되는 퀴즈를 낼게. 질문을 보고 적절한 선택을 해줘.
-            상황: "길을 걷다가 누군가가 다가와 무언가를 사달라고 요청했어요. 어떻게 할까요?"
-            1. 바로 사준다.
-            2. 이유를 묻고 도와줄 방법을 생각한다.
-            3. 그냥 무시하고 지나간다.
-            """
-            llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
-            result = llm.invoke([SystemMessage(content=quiz_prompt)])
-            return result.content
+    if "퀴즈" in user_input:
+        # GPT에게 퀴즈와 해설을 모두 요청하는 단일 프롬프트
+        prompt = f"""
+        너는 범죄 예방을 위한 도움을 제공하는 AI야. 사용자에게 범죄 예방과 관련된 퀴즈를 출제하고,
+        사용자가 답을 말하면 그 답이 맞았는지 틀렸는지 평가하고 해설을 제공해줘.
+        
+        예시:
+        상황: "길을 걷다가 누군가가 다가와 무언가를 사달라고 요청했어요. 어떻게 할까요?"
+        1. 바로 사준다.
+        2. 이유를 묻고 도와줄 방법을 생각한다.
+        3. 그냥 무시하고 지나간다.
 
-        quiz = generate_quiz()
-        st.session_state.quiz_active = True
-        st.session_state.current_quiz = quiz
-        st.chat_message("assistant", avatar="🤖").write(quiz)
-
-    # 퀴즈 응답 처리
-    elif st.session_state.quiz_active:
-        def evaluate_answer(user_answer, quiz_question):
-            prompt = f"""
-            사용자의 답변을 평가하고, 정답과 설명을 제공해줘.
-            퀴즈: {quiz_question}
-            사용자의 답변: {user_answer}
-            """
-            llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
-            result = llm.invoke([SystemMessage(content=prompt)])
-            return result.content
-
-        evaluation = evaluate_answer(user_input, st.session_state.current_quiz)
-        st.session_state.quiz_active = False
-        new_response = {"role": "assistant", "content": evaluation}
-        st.session_state.chat_history.append(new_response)
-        st.chat_message("assistant", avatar="🤖").write(new_response["content"])
-
-    # 일반적인 질문 처리
-    else:
-        messages = [SystemMessage(content=st.session_state.role_prompt)] + st.session_state.chat_history
+        이제 새로운 상황과 3개의 선택지를 제시해줘. 그리고 사용자가 답변을 제출하면 평가와 해설을 제공해줘.
+        """
         llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
-        result = llm.invoke(messages)
+        result = llm.invoke([SystemMessage(content=prompt)])
+
+        # 퀴즈와 결과를 처리
         new_response = {"role": "assistant", "content": result.content}
         st.session_state.chat_history.append(new_response)
         st.chat_message("assistant", avatar="🤖").write(new_response["content"])
