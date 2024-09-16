@@ -18,11 +18,10 @@ if "current_quiz" not in st.session_state:
     st.session_state.current_quiz = None
 if "role_prompt" not in st.session_state:
     st.session_state.role_prompt = """
-    This chatbot is designed to help slow learners who are vulnerable to various crimes. 
-    Please provide simple and short responses at a kindergarten level so that the user can easily understand. 
-    Also, communicate in a friendly and empathetic tone, like a close friend. 
-    Focus on crime prevention and provide helpful answers. 
-    All responses must be in Korean.
+    이 챗봇은 각종 범죄에 노출되기 쉬운 느린학습자를 돕기 위한 목적으로 설계되었습니다.
+    사용자가 이해하기 쉽게, 유치원 수준의 간단하고 짧은 답변을 제공해주세요.
+    또한 친근한 친구처럼 상냥하고 공감하는 말투로 대화하세요.
+    범죄 예방에 초점을 맞추어 도움이 되는 답변을 제공해주세요. 답변은 반드시 한국말로하세요.
     """
 
 if "sidebar_history" not in st.session_state:
