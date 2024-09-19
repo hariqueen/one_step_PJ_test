@@ -151,7 +151,7 @@ if user_input:
         result = llm.invoke(messages)
         new_response = {"role": "assistant", "content": result.content}
         st.session_state.chat_history.append(new_response)
-        st.chat_message("assistant", avatar="🤖").write(new_response["content"])
+        st.chat_message("assistant", avatar="🐻").write(new_response["content"])
 
     # DB에 데이터 추가
     insert_data(user_input, new_response["content"])
