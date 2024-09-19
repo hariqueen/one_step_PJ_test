@@ -100,10 +100,10 @@ if uploaded_file:
     embeddings_model = OpenAIEmbeddings()
     text_vectors = [embeddings_model.embed_query(text.page_content) for text in texts]
     st.session_state.role_prompt = f"""
-    Please carefully assess whether the uploaded file's content resembles a crime-related situation. 
-    Provide simple and short responses at a kindergarten level so that the user can easily understand. 
-    Also, communicate in a friendly and empathetic tone, like a close friend. Focus on crime prevention and provide helpful answers. 
-    All responses must be in Korean.
+    업로드된 파일의 내용이 범죄와 관련된 상황과 비슷한지 신중하게 확인해 주세요.
+    사용자가 쉽게 이해할 수 있도록 유치원 수준의 간단하고 짧은 답변을 제공하세요.
+    또한 친한 친구처럼 친근하고 공감하는 말투로 소통하세요. 범죄 예방에 초점을 맞추고 도움이 되는 답변을 제공하세요.
+    모든 답변은 반드시 한국어로 작성되어야 합니다.
     """
 
 ####################### 사용자 입력 처리 #######################
