@@ -1,6 +1,5 @@
 import streamlit as st
-import tempfile
-import os
+import boto3
 from langchain_community.document_loaders import TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
@@ -16,20 +15,48 @@ if "quiz_active" not in st.session_state:
     st.session_state.quiz_active = False
 if "current_quiz" not in st.session_state:
     st.session_state.current_quiz = None
-if "role_prompt" not in st.session_state:
-    st.session_state.role_prompt = """
-    이 챗봇은 각종 범죄에 노출되기 쉬운 느린학습자를 돕기 위한 목적으로 설계되었습니다.
-    사용자가 이해하기 쉽게, 유치원 수준의 간단하고 짧은 답변을 제공해주세요.
-    또한 친근한 친구처럼 상냥하고 공감하는 말투로 대화하세요.
-    범죄 예방에 초점을 맞추어 도움이 되는 답변을 제공해주세요. 답변은 반드시 한국말로하세요.
-    """
-
 if "sidebar_history" not in st.session_state:
     st.session_state.sidebar_history = []
 if "full_history" not in st.session_state:
     st.session_state.full_history = []
 if "restored_session" not in st.session_state:
     st.session_state.restored_session = False
+
+####################### S3에서 파일 가져오기 #######################
+
+# S3 클라이언트 설정
+s3 = boto3.client('s3')
+
+# S3에서 파일 가져오기
+def get_file_from_s3(bucket_name, file_key):
+    response = s3.get_object(Bucket=bucket_name, Key=file_key)
+    content = response['Body'].read().decode('utf-8')
+    return content
+
+# Streamlit 시크릿에서 S3 정보 가져오기
+bucket_name = st.secrets["bucket_name"]  # 'test-uploaded-case'
+file_key = st.secrets["file_key"]        # '범죄케이스_테스트.txt'
+
+# S3에서 파일 내용 가져오기
+file_content = get_file_from_s3(bucket_name, file_key)
+
+# 파일 내용을 텍스트로 로드 및 처리
+loader = TextLoader(file_content)
+pages = loader.load_and_split()
+
+# 텍스트 스플리터와 임베딩 모델 사용
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=300, chunk_overlap=20)
+texts = text_splitter.split_documents(pages)
+embeddings_model = OpenAIEmbeddings()
+text_vectors = [embeddings_model.embed_query(text.page_content) for text in texts]
+
+# role_prompt 업데이트 (업로드된 파일의 내용 기반)
+st.session_state.role_prompt = """
+업로드된 파일의 내용이 범죄와 관련된 상황과 비슷한지 신중하게 확인해 주세요.
+사용자가 쉽게 이해할 수 있도록 유치원 수준의 간단하고 짧은 답변을 제공하세요.
+또한 친근한 친구처럼 친근하고 공감하는 말투로 소통하세요. 범죄 예방에 초점을 맞추고 도움이 되는 답변을 제공하세요.
+모든 답변은 반드시 한국어로 작성되어야 합니다.
+"""
 
 ####################### 메인 화면 #######################
 
@@ -79,32 +106,6 @@ for idx, question in enumerate(st.session_state.sidebar_history):
 
         # 세션이 복원된 상태를 True로 설정
         st.session_state.restored_session = True
-
-####################### 파일 업로드 기능 #######################
-
-uploaded_file = st.file_uploader("범죄 사례 파일을 올려주세요.", type=['txt'])
-
-def txt_to_document(uploaded_file):
-    temp_dir = tempfile.TemporaryDirectory()
-    temp_filepath = os.path.join(temp_dir.name, uploaded_file.name)
-    with open(temp_filepath, "wb") as f:
-        f.write(uploaded_file.getvalue())
-    loader = TextLoader(temp_filepath)
-    pages = loader.load_and_split()
-    return pages
-
-if uploaded_file:
-    pages = txt_to_document(uploaded_file)
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=300, chunk_overlap=20)
-    texts = text_splitter.split_documents(pages)
-    embeddings_model = OpenAIEmbeddings()
-    text_vectors = [embeddings_model.embed_query(text.page_content) for text in texts]
-    st.session_state.role_prompt = f"""
-    업로드된 파일의 내용이 범죄와 관련된 상황과 비슷한지 신중하게 확인해 주세요.
-    사용자가 쉽게 이해할 수 있도록 유치원 수준의 간단하고 짧은 답변을 제공하세요.
-    또한 친한 친구처럼 친근하고 공감하는 말투로 소통하세요. 범죄 예방에 초점을 맞추고 도움이 되는 답변을 제공하세요.
-    모든 답변은 반드시 한국어로 작성되어야 합니다.
-    """
 
 ####################### 사용자 입력 처리 #######################
 
