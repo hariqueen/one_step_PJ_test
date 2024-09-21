@@ -9,3 +9,5 @@ langchain_community
 pydantic
 scikit-learn
 boto3
+s3fs
+st-files-connection
