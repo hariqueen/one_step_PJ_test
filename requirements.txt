@@ -8,3 +8,4 @@ pysqlite3-binary
 langchain_community
 pydantic
 scikit-learn
+boto3
