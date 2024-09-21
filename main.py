@@ -1,5 +1,6 @@
 import streamlit as st
 import boto3
+import tempfile
 from langchain_community.document_loaders import TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
@@ -25,7 +26,10 @@ if "restored_session" not in st.session_state:
 ####################### S3에서 파일 가져오기 #######################
 
 # S3 클라이언트 설정
-s3 = boto3.client('s3')
+s3 = boto3.client('s3', 
+                  aws_access_key_id=st.secrets["AWS_ACCESS_KEY_ID"], 
+                  aws_secret_access_key=st.secrets["AWS_SECRET_ACCESS_KEY"], 
+                  region_name=st.secrets["AWS_DEFAULT_REGION"])
 
 # S3에서 파일 가져오기
 def get_file_from_s3(bucket_name, file_key):
@@ -34,14 +38,19 @@ def get_file_from_s3(bucket_name, file_key):
     return content
 
 # Streamlit 시크릿에서 S3 정보 가져오기
-bucket_name = st.secrets["bucket_name"]  # 'test-uploaded-case'
-file_key = st.secrets["file_key"]        # '범죄케이스_테스트.txt'
+bucket_name = st.secrets["bucket_name"] 
+file_key = st.secrets["file_key"]       
 
 # S3에서 파일 내용 가져오기
 file_content = get_file_from_s3(bucket_name, file_key)
 
-# 파일 내용을 텍스트로 로드 및 처리
-loader = TextLoader(file_content)
+# 파일 내용을 임시 파일에 저장
+with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as temp_file:
+    temp_file.write(file_content.encode('utf-8'))
+    temp_file_path = temp_file.name
+
+# 임시 파일 경로를 사용하여 TextLoader로 파일 내용을 로드 및 처리
+loader = TextLoader(temp_file_path)
 pages = loader.load_and_split()
 
 # 텍스트 스플리터와 임베딩 모델 사용
@@ -57,8 +66,6 @@ st.session_state.role_prompt = """
 또한 친근한 친구처럼 친근하고 공감하는 말투로 소통하세요. 범죄 예방에 초점을 맞추고 도움이 되는 답변을 제공하세요.
 모든 답변은 반드시 한국어로 작성되어야 합니다.
 """
-
-####################### 메인 화면 #######################
 
 st.title("바라봇 - 친구처럼 도와주는 AI")
 
